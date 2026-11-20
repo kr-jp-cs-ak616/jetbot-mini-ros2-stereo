@@ -30,6 +30,35 @@ W/S 전진·후진, A/D 회전, Space/X 정지, Q 종료입니다. 첫 방향 �
 현재 SSH 공유 연결 기본 경로는 `/tmp/jetbot-small-area`이며
 `JETBOT_SSH_CONTROL_PATH` 환경변수로 바꿀 수 있습니다.
 
+### 모터 보드 전압 오보 (2026-11-20 해결)
+
+**증상:** 드라이버를 시작하고 약 4분 19초 뒤 `MOTOR_WORKER_FAULT RuntimeError: Motor battery missing/low: 1.33 V`가 발생해 구동이 차단됐습니다. 사용자가 배터리 상태가 정상임을 확인했습니다.
+
+**원인 (Nano에서 실측):** 모터 보드 STM8(I²C 버스 1, 주소 0x1B)은 마지막 I²C 쓰기 이후 **256번째 전압 읽기부터 4~20회 동안 상위 바이트를 0으로** 보냅니다.
+전압 원시값은 `V = ((hi << 8) | lo) × 13.3 / 1023`으로 계산합니다(Yahboom 원본 공식).
+상위 바이트가 빠지면 11.31 V(`0x366`)가 1.33 V(`0x066`)로 보고됩니다.
+
+| 시험 | 결과 |
+|---|---|
+| 1,600회 연속 읽기 (약 20 Hz) | 0부터 센 255, 511, 767, 1023, 1279, 1535번째 읽기에서 상위 바이트 0. 간격 정확히 256 |
+| 120회 읽기 → 정지 쓰기 → 계속 읽기 | 오류가 375번째(=120+255)에서 발생. 쓰기가 카운터를 초기화함 |
+| 200회마다 부저 OFF(`0x06 ← 0`) 쓰기 | 900회 읽기 중 오류 0회 |
+| 기존 `docker logs` | 정지 14건 중 9건이 시작 후 4분 18~20초 (1초 주기 × 256회). 로그의 저전압 값 0.61~2.00 V에 상위 바이트 `0x03`을 붙이면 모두 10.60~11.99 V |
+
+칩 내부에 8비트 읽기 카운터가 있다는 설명은 측정 결과에서 추정한 모델입니다(STM8 펌웨어 비공개).
+
+**ROS1 → ROS2 이식에서 드러난 이유:** Yahboom ROS1 원본은 30초마다 읽고 9.9 V 이하를 `Battery_Empty` 상태 표시로만 썼습니다. 그래서 2시간 8분에 한 번 표시가 잠깐 튀는 정도였습니다. ROS2 이식본은 1초마다 읽고, 한 번이라도 9.9 V 미만이면 모터 worker 프로세스를 종료했습니다.
+
+**수정 (Nano `/home/ros2/jetbot_ros2`, 이미지 재빌드 완료):**
+
+- `jetbot_mini_ros2/core.py` `I2CBus.voltage()`: 200회 읽을 때마다 부저 OFF를 써서 보드 카운터를 초기화합니다(`REFRESH_READS = 200`). 상위 바이트가 0인 값(3.33 V 미만)은 `BatteryReadInvalid`로 처리합니다.
+- `BatteryMonitor`: 9.9 V 미만이 5회 연속(`battery_low_samples`, 기본 5)이면 정지합니다. 무효값만 10초(`battery_invalid_timeout`, 기본 10) 이어지면 `Motor battery missing or reading invalid`로 정지합니다.
+- `read_voltage()`: `jetbotctl battery`와 `jetbotctl mode real`은 유효 샘플 5개의 중앙값을 사용합니다.
+- 검증: 안전 테스트 15개 통과(호스트 Python 3.6, 이미지 Python 3.10). 새 드라이버 7분 29초 연속 실행 중 fault 없음(10.61 V). 실제 주행 시험은 남아 있습니다.
+- 되돌리기: 원본은 `/home/ros2/jetbot_ros2.bak-20261120-battery`, 이전 이미지는 `jetbot-mini-ros2:before-battery-fix` 태그입니다.
+
+그림 설명 자료는 [`jetbot-256th-read.pdf`](jetbot-256th-read.pdf)에 있습니다.
+
 2026-11-17 수동 이동 지도는 `maps/jetbot-20261117-124440.db`에 정상 종료 후 저장했고,
 `maps/jetbot-20261117-124440-saved-backup.db`로 백업했습니다. SQLite 무결성 검사 결과는
 `log/mapping-saved-106mm.json`에 있습니다. 주행 준비 과정에서 매핑은 종료했고 카메라 연결은 유지합니다.

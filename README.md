@@ -190,12 +190,13 @@ RViz에서 **2D Pose Estimate**를 선택하세요. 지도에서 카메라가 �
 | `receiver did not open port 8765` | Nano에서 `docker exec jetbot-mini-ros2 tail -n 40 /tmp/jetbot-stereo-publisher.log`로 보정 YAML, ROS 설치 경로, 수신 포트의 에러를 읽습니다. |
 | `카메라 입력이 준비되지 않았습니다` | 노트북에서 `bash ros_cameras.sh status`를 실행합니다. Nano의 발행 수가 늘어도 노트북 변환 PID가 없다면 `tail -n 40 /tmp/jetbot-stereo-decoder.log`를 확인합니다. 양쪽 ROS 도메인은 16입니다. |
 | RViz에 지도가 없음 | 현재 실행한 실험이 참조 지도인지 벽 지도인지 확인하고, RViz의 **Fixed Frame**, 지도 토픽 및 **Displays → Status**를 봅니다. |
-| `Motor battery missing/low` | 기존 모터 드라이버가 있는 경우 `bash jetbot_drive.sh status`로 전압과 `fault`를 확인합니다. 보호 설정을 유지하고 영상 작업은 손으로 움직이며 계속할 수 있습니다. |
+| `Motor battery missing/low` | `bash jetbot_drive.sh status`로 전압과 `fault`를 확인합니다. 2026-11-20 수정 이후 이 오류는 9.9 V 미만이 5회 연속 측정될 때만 발생하므로 실제 저전압일 가능성이 높습니다. 테스터기로 배터리 단자 전압을 확인합니다. |
+| `Motor battery missing or reading invalid` | 상위 바이트가 0인 무효 전압값만 10초 이상 이어진 경우입니다. 배터리 연결과 모터 보드 I²C 연결(0x1B)을 확인합니다. |
 
 ## 실험 결과와 코드 위치
 
 - 스테레오 촬영, 화면 체커보드 보정, 영상 수신, RTAB-Map DB 저장을 실기에서 확인했습니다. 최종 결과는 카메라 장착과 조명, 특징점, 좌우 노출 시차에 따라 달라집니다. 절대 거리 정확도와 장거리 지도 정확도는 검증이 남아 있습니다.
-- 기존 모터 보드는 Nano 재부팅 후 정지 상태에서도 전압이 **11.31 V → 1.33 V**로 보고돼 구동을 차단했습니다. 당시 실제 배터리 단자 전압은 확인하지 못했습니다. 이 저장소는 기존 모터 드라이버 설치 파일과 펌웨어 대신 연결 스크립트 `jetbot_drive.sh`를 제공합니다.
+- 기존 모터 보드가 정지 상태에서도 전압을 **11.31 V → 1.33 V**로 보고해 구동을 차단하던 문제는 **2026-11-20 원인을 확인하고 Nano 드라이버를 수정했습니다.** 배터리는 정상이었습니다. 모터 보드(STM8, I²C 0x1B)가 마지막 쓰기 이후 256번째 전압 읽기부터 4~20회 동안 상위 바이트를 0으로 보내는 결함이 원인입니다. 자세한 내용은 [기술 노트](docs/technical-notes.md#모터-보드-전압-오보-2026-11-20-해결)와 그림 설명 자료 [`docs/jetbot-256th-read.pdf`](docs/jetbot-256th-read.pdf)에 있습니다. 드라이버 코드는 Nano의 `/home/ros2/jetbot_ros2`에 있으며, 이 저장소는 연결 스크립트 `jetbot_drive.sh`만 제공합니다.
 - [상세 실험 기록](docs/technical-notes.md)에는 RTAB-Map 설정, 보정 비교, 회전 촬영, 흰 가림판 검출과 위치 추정 실험이 있습니다. [UNO·IMU 재설계 초안](docs/jetbot-mini-redesign-20261119.md)은 기존 보드 교체를 검토한 설계이며 실기 적용 전입니다.
 - `src/jetbot_stereo/`는 ROS 패키지, `scripts/`는 촬영·보정·분석 도구, `assets/`는 체커보드와 RViz 설정, `tests/`는 로봇 없이 실행할 수 있는 검증 코드입니다. 실험 공간 사진·원본 동영상·실내 지도·장치 로그는 작업 PC에 보관합니다.
 
