@@ -1,0 +1,227 @@
+diff -ruN '--exclude=__pycache__' '--exclude=*.pyc' jetbot_ros2.bak-20261120-battery/jetbotctl jetbot_ros2/jetbotctl
+--- a/jetbotctl	2026-11-13 17:22:29.000000000 +0900
++++ b/jetbotctl	2026-11-20 15:05:06.140026002 +0900
+@@ -70,7 +70,7 @@
+     docker exec -i "$NAME" /jetbot-entrypoint.sh ros2 "$@"
+     ;;
+ battery)
+-    PYTHONPATH="$ROOT" python3 -c 'from jetbot_mini_ros2.core import I2CBus; b=I2CBus(); print("Board ADC estimate: %.2f V" % b.voltage()); b.close()'
++    PYTHONPATH="$ROOT" python3 -c 'from jetbot_mini_ros2.core import I2CBus, read_voltage; b=I2CBus(); print("Board ADC estimate: %.2f V" % read_voltage(b)); b.close()'
+     ;;
+ mode)
+     [[ "${2:-}" == dry || "${2:-}" == real ]] || { echo 'Usage: jetbotctl mode dry|real'; exit 1; }
+@@ -80,7 +80,7 @@
+         docker stop -t 10 "$NAME" >/dev/null
+     fi
+     if [[ "$2" == real ]]; then
+-        PYTHONPATH="$ROOT" python3 -c 'import json,sys; from jetbot_mini_ros2.core import I2CBus; c=json.load(open(sys.argv[1])); b=I2CBus(); v=b.voltage(); b.close(); print("Battery estimate: %.2f V" % v); assert c["min_battery_voltage"] <= v <= 13.0, "Battery absent, low or unverified: keep dry mode"' "$ROOT/config/settings.json"
++        PYTHONPATH="$ROOT" python3 -c 'import json,sys; from jetbot_mini_ros2.core import I2CBus, read_voltage; c=json.load(open(sys.argv[1])); b=I2CBus(); v=read_voltage(b); b.close(); print("Battery estimate: %.2f V" % v); assert c["min_battery_voltage"] <= v <= 13.0, "Battery absent, low or unverified: keep dry mode"' "$ROOT/config/settings.json"
+     fi
+     python3 - "$ROOT/config/settings.json" "$2" <<'PY'
+ import json, pathlib, sys
+diff -ruN '--exclude=__pycache__' '--exclude=*.pyc' jetbot_ros2.bak-20261120-battery/jetbot_mini_ros2/core.py jetbot_ros2/jetbot_mini_ros2/core.py
+--- a/jetbot_mini_ros2/core.py	2026-11-14 22:26:56.000000000 +0900
++++ b/jetbot_mini_ros2/core.py	2026-11-20 15:05:05.996022072 +0900
+@@ -45,9 +45,19 @@
+                 ('size', ctypes.c_uint32), ('data', ctypes.POINTER(SMBusPayload))]
+ 
+ 
++class BatteryReadInvalid(ValueError):
++    """Battery ADC sample that cannot be a real reading (e.g. high byte dropped)."""
++
++
+ class I2CBus:
++    # Measured 2026-11-20: the STM8 (0x1B) returns 0 in the high byte for 4-20 reads
++    # starting at the 256th voltage read after its last I2C write. Any write resets
++    # that count, so a harmless write is issued before the count can reach 256.
++    REFRESH_READS = 200
++
+     def __init__(self, bus=1, address=0x1b):
+         self.address = address
++        self.reads_since_write = 0
+         self.fd = os.open('/dev/i2c-%d' % bus, os.O_RDWR)
+         try:
+             fcntl.ioctl(self.fd, 0x0703, address)  # I2C_SLAVE
+@@ -69,6 +79,7 @@
+         libc = ctypes.CDLL(None, use_errno=True)
+         if libc.ioctl(self.fd, 0x0720, ctypes.byref(transfer)) != 0:
+             raise OSError(ctypes.get_errno(), 'SMBus motor write failed')
++        self.reads_since_write = 0
+ 
+     def write(self, data):
+         if data == bytes([2, 0]):
+@@ -90,6 +101,18 @@
+             raise ValueError('Unsupported motor-board command')
+ 
+     def voltage(self):
++        if getattr(self, 'reads_since_write', 0) >= self.REFRESH_READS:
++            self._smbus_write(6, [0])  # buzzer off; resets the board's read count
++            self.reads_since_write = 0
++        raw = self._read_raw()
++        self.reads_since_write = getattr(self, 'reads_since_write', 0) + 1
++        # Below 0x100 (3.33 V) the high byte is zero: the known STM8 corruption,
++        # or no battery at all. Either way it is not a usable voltage sample.
++        if not 0x100 <= raw <= 1023:
++            raise BatteryReadInvalid('Invalid battery ADC: %d (0x%03x)' % (raw, raw))
++        return raw * 13.3 / 1023.0
++
++    def _read_raw(self):
+         class Message(ctypes.Structure):
+             _fields_ = [('addr', ctypes.c_uint16), ('flags', ctypes.c_uint16),
+                         ('length', ctypes.c_uint16), ('buf', ctypes.POINTER(ctypes.c_uint8))]
+@@ -106,15 +129,56 @@
+         result = libc.ioctl(self.fd, 0x0707, ctypes.byref(transfer))  # I2C_RDWR
+         if result != 2:
+             raise OSError(ctypes.get_errno(), 'Battery read failed')
+-        raw = (int(data[0]) << 8) | int(data[1])
+-        if not 0 <= raw <= 1023:
+-            raise ValueError('Invalid battery ADC: %d' % raw)
+-        return raw * 13.3 / 1023.0
++        return (int(data[0]) << 8) | int(data[1])
+ 
+     def close(self):
+         os.close(self.fd)
+ 
+ 
++def read_voltage(bus, samples=5, attempts=30):
++    """Median of several valid samples, for one-shot CLI checks."""
++    values = []
++    for _ in range(attempts):
++        try:
++            values.append(bus.voltage())
++        except BatteryReadInvalid:
++            pass
++        if len(values) == samples:
++            return sorted(values)[samples // 2]
++        time.sleep(0.02)
++    raise BatteryReadInvalid('Only %d valid battery samples in %d reads' % (len(values), attempts))
++
++
++class BatteryMonitor:
++    """Low-voltage fault only on consecutive valid samples; invalid samples time out separately."""
++
++    def __init__(self, minimum, low_samples=5, invalid_timeout=10.0):
++        self.minimum = minimum
++        self.low_samples = low_samples
++        self.invalid_timeout = invalid_timeout
++        self.voltage = None
++        self.low_count = 0
++        self.invalid_since = None
++
++    def update(self, read, now):
++        try:
++            value = read()
++        except BatteryReadInvalid as exc:
++            if self.invalid_since is None:
++                self.invalid_since = now
++            if now - self.invalid_since >= self.invalid_timeout:
++                raise RuntimeError('Motor battery missing or reading invalid for %.1f s: %s'
++                                   % (now - self.invalid_since, exc))
++            return self.voltage
++        self.invalid_since = None
++        self.voltage = value
++        self.low_count = self.low_count + 1 if value < self.minimum else 0
++        if self.low_count >= self.low_samples:
++            raise RuntimeError('Motor battery missing/low: %.2f V (%d consecutive samples)'
++                               % (value, self.low_count))
++        return value
++
++
+ class MotorGuard:
+     def __init__(self, bus, timeout=0.3, max_pwm=80):
+         self.bus = bus
+@@ -167,13 +231,14 @@
+     try:
+         bus = SimulatedBus() if config['dry_run'] else I2CBus(config['i2c_bus'], config['i2c_address'])
+         guard = MotorGuard(bus, config['command_timeout'], config['max_pwm'])
++        battery = BatteryMonitor(config['min_battery_voltage'],
++                                 config.get('battery_low_samples', 5),
++                                 config.get('battery_invalid_timeout', 10.0))
+         while True:
+             now = time.monotonic()
+             if not config['dry_run'] and now - last_battery > 1.0:
+-                voltage = bus.voltage()
+                 last_battery = now
+-                if voltage < config['min_battery_voltage']:
+-                    raise RuntimeError('Motor battery missing/low: %.2f V' % voltage)
++                voltage = battery.update(bus.voltage, now)
+             if receiver.poll(0.02):
+                 command = receiver.recv()
+                 # Only the newest command can reach the motor driver.
+@@ -232,6 +297,12 @@
+     minimum = config.get('min_pwm', 0)
+     if type(minimum) is not int or not 0 <= minimum <= config['max_pwm']:
+         raise ValueError('min_pwm must be an integer within the output limit')
++    samples = config.get('battery_low_samples', 5)
++    if type(samples) is not int or not 1 <= samples <= 30:
++        raise ValueError('battery_low_samples must be an integer from 1 to 30')
++    timeout = config.get('battery_invalid_timeout', 10.0)
++    if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 2 <= timeout <= 30:
++        raise ValueError('battery_invalid_timeout must be 2 to 30 seconds')
+     if config['i2c_bus'] != 1 or config['i2c_address'] != 0x1b:
+         raise ValueError('This configuration targets JetBot Mini on I2C 1, address 0x1B')
+     for key in ('invert_left', 'invert_right'):
+diff -ruN '--exclude=__pycache__' '--exclude=*.pyc' jetbot_ros2.bak-20261120-battery/tests/test_safety.py jetbot_ros2/tests/test_safety.py
+--- a/tests/test_safety.py	2026-11-14 22:26:56.000000000 +0900
++++ b/tests/test_safety.py	2026-11-20 15:05:06.072024146 +0900
+@@ -7,7 +7,8 @@
+ import unittest
+ from unittest.mock import Mock, call
+ 
+-from jetbot_mini_ros2.core import I2CBus, MotorGuard, motor_packet, motor_worker, validate_config, wheel_pwm
++from jetbot_mini_ros2.core import (BatteryMonitor, BatteryReadInvalid, I2CBus, MotorGuard, motor_packet,
++                                   motor_worker, read_voltage, validate_config, wheel_pwm)
+ 
+ 
+ CONFIG = dict(json.loads((pathlib.Path(__file__).parents[1] / 'config/settings.json').read_text()), dry_run=True)
+@@ -94,6 +95,50 @@
+             with self.assertRaises(ValueError):
+                 validate_config(dict(CONFIG, **{key: value}))
+ 
++    def _battery_bus(self, raws):
++        bus = object.__new__(I2CBus)
++        bus.reads_since_write = 0
++        bus._read_raw = Mock(side_effect=raws)
++        bus._smbus_write = Mock()
++        return bus
++
++    def test_dropped_high_byte_is_invalid_not_low(self):
++        bus = self._battery_bus([0x366, 0x066])
++        self.assertAlmostEqual(bus.voltage(), 11.31, places=2)
++        with self.assertRaises(BatteryReadInvalid):
++            bus.voltage()  # 1.33 V before the fix
++
++    def test_harmless_write_before_256th_read(self):
++        bus = self._battery_bus([0x33e] * 450)
++        for _ in range(450):
++            bus.voltage()
++        self.assertEqual(bus._smbus_write.call_args_list, [call(6, [0]), call(6, [0])])
++        self.assertLess(bus.reads_since_write, 256)
++
++    def test_battery_monitor_ignores_glitches_but_faults_on_real_low(self):
++        monitor = BatteryMonitor(9.9, low_samples=5, invalid_timeout=10.0)
++        glitch = Mock(side_effect=BatteryReadInvalid('dropped'))
++        self.assertEqual(monitor.update(lambda: 10.8, 0.0), 10.8)
++        for t in range(1, 10):
++            self.assertEqual(monitor.update(glitch, float(t)), 10.8)
++        self.assertEqual(monitor.update(lambda: 10.8, 10.0), 10.8)  # valid sample resets timer
++        for t in range(11, 15):
++            monitor.update(lambda: 9.0, float(t))
++        with self.assertRaisesRegex(RuntimeError, 'missing/low'):
++            monitor.update(lambda: 9.0, 15.0)
++
++    def test_battery_monitor_faults_when_reading_stays_invalid(self):
++        monitor = BatteryMonitor(9.9, invalid_timeout=10.0)
++        glitch = Mock(side_effect=BatteryReadInvalid('no battery'))
++        monitor.update(glitch, 0.0)
++        monitor.update(glitch, 9.9)
++        with self.assertRaisesRegex(RuntimeError, 'reading invalid'):
++            monitor.update(glitch, 10.0)
++
++    def test_cli_voltage_skips_invalid_samples(self):
++        bus = self._battery_bus([0x066, 0x366, 0x366, 0x067, 0x366, 0x366, 0x366])
++        self.assertAlmostEqual(read_voltage(bus), 11.31, places=2)
++
+     def test_watchdog_process_stops_without_ros_or_parent_updates(self):
+         context = mp.get_context('spawn')
+         receiver, sender = context.Pipe(duplex=False)

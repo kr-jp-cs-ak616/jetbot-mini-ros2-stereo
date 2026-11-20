@@ -56,6 +56,7 @@ W/S 전진·후진, A/D 회전, Space/X 정지, Q 종료입니다. 첫 방향 �
 - `read_voltage()`: `jetbotctl battery`와 `jetbotctl mode real`은 유효 샘플 5개의 중앙값을 사용합니다.
 - 검증: 안전 테스트 15개 통과(호스트 Python 3.6, 이미지 Python 3.10). 새 드라이버 7분 29초 연속 실행 중 fault 없음(10.61 V). 실제 주행 시험은 남아 있습니다.
 - 되돌리기: 원본은 `/home/ros2/jetbot_ros2.bak-20261120-battery`, 이전 이미지는 `jetbot-mini-ros2:before-battery-fix` 태그입니다.
+- 변경 내역: [`patches/20261120-battery-fix.diff`](patches/20261120-battery-fix.diff). 적용과 되돌리기 방법은 [`patches/README.md`](patches/README.md)에 있습니다.
 
 그림 설명 자료는 [`jetbot-256th-read.pdf`](jetbot-256th-read.pdf)에 있습니다.
 
