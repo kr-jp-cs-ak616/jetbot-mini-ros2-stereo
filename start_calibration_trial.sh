@@ -6,8 +6,8 @@ project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 bridge=jetbot-calibration-bridge.service
 localization=jetbot-calibration-localization.service
 rviz=jetbot-calibration-rviz.service
-calibration="$project_dir/calibration/trial-106mm"
-map="$project_dir/maps/map2-room-reference-20261118/map2_room.yaml"
+calibration="${JETBOT_TRIAL_CALIBRATION_DIR:-$project_dir/calibration/trial-106mm}"
+map="${JETBOT_MAP_YAML:-$project_dir/maps/map2-room-reference-20261118/map2_room.yaml}"
 target="${JETBOT_SSH_TARGET:-ros2}"
 socket="${JETBOT_SSH_CONTROL_PATH:-/tmp/jetbot-small-area}"
 pitch="${JETBOT_CAMERA_PITCH_DEG:-3.5}"
@@ -52,14 +52,18 @@ for file in "$project_dir/install/setup.bash" "$calibration/left.yaml" "$calibra
         exit 1
     fi
 done
+calibration="$(realpath -- "$calibration")"
+map="$(realpath -- "$map")"
 
-if ! ssh -o BatchMode=yes -o ConnectTimeout=5 -S "$socket" "$target" true; then
-    echo '노트북 터미널에서 Nano SSH 연결을 먼저 열어주세요.' >&2
-    printf '  ssh -M -S %q -o ControlPersist=3600 -fnNT %q\n' "$socket" "$target" >&2
-    exit 1
+if [[ "${JETBOT_TRIAL_REUSE_CAMERA:-0}" != 1 ]]; then
+    if ! ssh -o BatchMode=yes -o ConnectTimeout=5 -S "$socket" "$target" true; then
+        echo '노트북 터미널에서 Nano SSH 연결을 먼저 열어주세요.' >&2
+        printf '  ssh -M -S %q -o ControlPersist=3600 -fnNT %q\n' "$socket" "$target" >&2
+        exit 1
+    fi
+    ssh -o BatchMode=yes -o ConnectTimeout=5 -S "$socket" "$target" \
+        'python3 ~/jetbot_stereo_camera/scripts/manage_ros_cameras.py start'
 fi
-ssh -o BatchMode=yes -o ConnectTimeout=5 -S "$socket" "$target" \
-    'python3 ~/jetbot_stereo_camera/scripts/manage_ros_cameras.py start'
 
 stop_trial
 if ! systemd-run --user --unit="$bridge" --collect --working-directory="$project_dir" \

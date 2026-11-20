@@ -193,6 +193,10 @@ RViz에서 **2D Pose Estimate**를 선택하세요. 지도에서 카메라가 �
 | `Motor battery missing/low` | `bash jetbot_drive.sh status`로 전압과 `fault`를 확인합니다. 2026-11-20 수정 이후 이 오류는 9.9 V 미만이 5회 연속 측정될 때만 발생하므로 실제 저전압일 가능성이 높습니다. 테스터기로 배터리 단자 전압을 확인합니다. |
 | `Motor battery missing or reading invalid` | 상위 바이트가 0인 무효 전압값만 10초 이상 이어진 경우입니다. 배터리 연결과 모터 보드 I²C 연결(0x1B)을 확인합니다. |
 
+## ArUco, 영상 복귀와 CUDA
+
+마커를 인쇄하고 사진 기반 복귀를 시험하거나 CUDA 검증과 실측 데이터 수집을 이어가려면 [ArUco·CUDA 단계별 안내](docs/aruco-cuda-workflow.md)를 보세요.
+
 ## 실험 결과와 코드 위치
 
 - 스테레오 촬영, 화면 체커보드 보정, 영상 수신, RTAB-Map DB 저장을 실기에서 확인했습니다. 최종 결과는 카메라 장착과 조명, 특징점, 좌우 노출 시차에 따라 달라집니다. 절대 거리 정확도와 장거리 지도 정확도는 검증이 남아 있습니다.
