@@ -1,0 +1,23 @@
+{
+  "connector": "HDMI-1-0",
+  "resolution": [
+    1920,
+    1080
+  ],
+  "refresh_hz": 60,
+  "reported_physical_mm": [
+    598,
+    336
+  ],
+  "square_mm": 25,
+  "board_squares": [
+    9,
+    7
+  ],
+  "inner_corners": [
+    8,
+    6
+  ],
+  "source": "xrandr --current (desktop X server)",
+  "note": "Verify horizontal and vertical rulers physically. Full physical panel must be filled."
+}

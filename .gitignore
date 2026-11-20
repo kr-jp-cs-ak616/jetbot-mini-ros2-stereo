@@ -1,0 +1,16 @@
+build/
+install/
+log/
+__pycache__/
+*.pyc
+.env
+maps/
+calibration/*.yaml
+captures/
+diagnostics/
+/.agents/
+/.aws/
+/.codex/
+/.pytest_cache/
+/capture.log
+/capture.pid

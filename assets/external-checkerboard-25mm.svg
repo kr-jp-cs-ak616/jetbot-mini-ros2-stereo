@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 598 336" preserveAspectRatio="none">
+<title>External display checkerboard: 25 mm squares at full-panel 598 x 336 mm</title>
+<rect width="598" height="336" fill="white"/>
+<g fill="black">
+<rect x="186.5" y="80.5" width="25" height="25"/>
+<rect x="236.5" y="80.5" width="25" height="25"/>
+<rect x="286.5" y="80.5" width="25" height="25"/>
+<rect x="336.5" y="80.5" width="25" height="25"/>
+<rect x="386.5" y="80.5" width="25" height="25"/>
+<rect x="211.5" y="105.5" width="25" height="25"/>
+<rect x="261.5" y="105.5" width="25" height="25"/>
+<rect x="311.5" y="105.5" width="25" height="25"/>
+<rect x="361.5" y="105.5" width="25" height="25"/>
+<rect x="186.5" y="130.5" width="25" height="25"/>
+<rect x="236.5" y="130.5" width="25" height="25"/>
+<rect x="286.5" y="130.5" width="25" height="25"/>
+<rect x="336.5" y="130.5" width="25" height="25"/>
+<rect x="386.5" y="130.5" width="25" height="25"/>
+<rect x="211.5" y="155.5" width="25" height="25"/>
+<rect x="261.5" y="155.5" width="25" height="25"/>
+<rect x="311.5" y="155.5" width="25" height="25"/>
+<rect x="361.5" y="155.5" width="25" height="25"/>
+<rect x="186.5" y="180.5" width="25" height="25"/>
+<rect x="236.5" y="180.5" width="25" height="25"/>
+<rect x="286.5" y="180.5" width="25" height="25"/>
+<rect x="336.5" y="180.5" width="25" height="25"/>
+<rect x="386.5" y="180.5" width="25" height="25"/>
+<rect x="211.5" y="205.5" width="25" height="25"/>
+<rect x="261.5" y="205.5" width="25" height="25"/>
+<rect x="311.5" y="205.5" width="25" height="25"/>
+<rect x="361.5" y="205.5" width="25" height="25"/>
+<rect x="186.5" y="230.5" width="25" height="25"/>
+<rect x="236.5" y="230.5" width="25" height="25"/>
+<rect x="286.5" y="230.5" width="25" height="25"/>
+<rect x="336.5" y="230.5" width="25" height="25"/>
+<rect x="386.5" y="230.5" width="25" height="25"/>
+</g>
+<g fill="none" stroke="black" stroke-width="0.5">
+<path d="M249 285v6m0 -3h100m0 -3v6"/>
+<path d="M50 118h6m-3 0v100m-3 0h6"/>
+</g>
+<g font-family="sans-serif" font-size="4" text-anchor="middle" fill="#333">
+<text x="299" y="35">8 x 6 inner corners | 25 mm target squares | fullscreen on 598 x 336 mm display</text>
+<text x="299" y="300">100 mm horizontal reference</text>
+<text x="53" y="230">100 mm vertical</text>
+</g>
+</svg>

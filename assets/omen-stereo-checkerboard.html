@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OMEN 15 · 스테레오 보정 패턴</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px system-ui, sans-serif; color: #202020; background: #eee; }
+  header { max-width: 1100px; margin: auto; padding: 16px 20px; }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  p { margin: 8px 0; line-height: 1.5; }
+  button, input { font: inherit; padding: 8px 12px; }
+  button { cursor: pointer; margin: 4px 8px 4px 0; }
+  input { width: 100px; }
+  #stage { background: white; display: flex; align-items: center; justify-content: center; }
+  #stage svg { display: block; width: min(100%, 1100px); height: auto; }
+  #stage:fullscreen { width: 100vw; height: 100vh; }
+  #stage:fullscreen svg { width: 100%; height: 100%; }
+  #status { font-weight: 600; }
+</style>
+<header>
+  <h1>OMEN 15 화면용 스테레오 보정 패턴</h1>
+  <p>내장 패널 2560×1600 · 약 329 mm 너비 기준 · 9×7칸 / 내부 교차점 8×6개</p>
+  <p><b>① 내장 화면에서 전체화면 → ② 아래 100 mm 눈금을 자로 측정 → ③ 필요하면 크기 보정.</b>
+  전체화면 전에는 칸의 실제 크기가 달라집니다. Esc로 돌아오세요.</p>
+  <button id="fullscreen">전체화면으로 표시</button>
+  <label>눈금 실측 <input id="measured" type="number" min="50" max="150" step="0.1" value="100"> mm</label>
+  <button id="correct">눈금 크기 보정</button>
+  <button id="reset">초기 크기</button>
+  <p id="status" role="status"></p>
+  <p>보정된 목표 칸 크기 25 mm → ROS 설정 <code>--size 8x6 --square 0.025</code>.
+  눈금 보정 뒤 다시 전체화면에서 가로·세로 한 칸을 실측하세요. 두 방향 모두 25 mm인지 확인합니다.</p>
+  <p>화면에 반사가 없도록 하고 밝기를 조절하세요. 패턴 전체가 두 카메라에 함께 보여야 합니다.
+  서로 다른 거리와 기울기에서 여러 쌍을 촬영하되, 각 쌍을 찍는 동안 화면과 로봇을 멈추세요.</p>
+  <p>HP 공식 <a href="https://support.hp.com/in-en/document/ish_13648102-13648146-16">화면 옵션 자료</a>와
+  현재 PC 내장 패널 EDID(패널명 MNF307DA1-3)를 참고했습니다.
+  EDID의 mm 값은 반올림된 정보이므로 자로 확인한 값이 우선입니다. 원격 접속이나 다른 모니터에서는 크기를 다시 확인하세요.</p>
+</header>
+<div id="stage"></div>
+<script>
+'use strict';
+const stage = document.getElementById('stage');
+const status = document.getElementById('status');
+let scale = 1;
+let verified = false;
+function render() {
+  const ppm = 2560 / 329;
+  const square = 25 * ppm * scale;
+  const x0 = (2560 - 9 * square) / 2;
+  const y0 = (1600 - 7 * square) / 2;
+  let cells = '';
+  for (let y=0; y<7; y++) for (let x=0; x<9; x++) {
+    if ((x+y)%2===0) cells += `<rect x="${x0+x*square}" y="${y0+y*square}" width="${square}" height="${square}"/>`;
+  }
+  const ruler = 100 * ppm * scale;
+  stage.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1600" preserveAspectRatio="xMidYMid meet" aria-label="9 by 7 checkerboard with 8 by 6 internal corners">
+    <rect width="2560" height="1600" fill="white"/>
+    <text x="1280" y="48" text-anchor="middle" font-family="sans-serif" font-size="23" fill="#555">8 x 6 inner corners | target square: 25 mm | use fullscreen + verify with ruler</text>
+    <g fill="black">${cells}</g>
+    <path d="M ${1280-ruler/2} 1515 v 30 m 0 -15 h ${ruler} m 0 -15 v 30" stroke="black" stroke-width="3" fill="none"/>
+    <text x="1280" y="1580" text-anchor="middle" font-family="sans-serif" font-size="24">100 mm reference — measure in fullscreen</text>
+  </svg>`;
+  status.textContent = (verified ? '실측 입력에 따라 크기를 조정했습니다. 다시 측정해 확인하세요.' : '현재 크기는 패널 사양 기반 추정값입니다. 전체화면에서 자로 확인하세요.') + ` 배율: ${scale.toFixed(5)}`;
+}
+document.getElementById('fullscreen').onclick = async () => {
+  try { await stage.requestFullscreen(); }
+  catch (e) { status.textContent = '전체화면 요청이 차단되었습니다. 브라우저에서 직접 파일을 열어주세요.'; }
+};
+document.getElementById('correct').onclick = () => {
+  const measured = Number(document.getElementById('measured').value);
+  if (!Number.isFinite(measured) || measured < 50 || measured > 150) {
+    status.textContent = '실측값은 50~150 mm 범위로 입력하세요.'; return;
+  }
+  const proposed = scale * 100 / measured;
+  if (proposed < 0.7 || proposed > 1.04) {
+    status.textContent = '측정값이 화면 크기와 맞지 않습니다. 내장 화면 전체화면에서 100 mm 눈금을 다시 측정하세요.'; return;
+  }
+  scale = proposed; verified = true; render();
+};
+document.getElementById('reset').onclick = () => { scale=1; verified=false; render(); };
+render();
+</script>
+</html>

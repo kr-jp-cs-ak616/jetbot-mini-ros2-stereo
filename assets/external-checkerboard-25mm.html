@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>보조 모니터 · 25 mm 스테레오 보정판</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eee;color:#222;font:16px system-ui,sans-serif}
+header{max-width:1100px;margin:auto;padding:20px}h1{font-size:24px;margin:0 0 12px}
+p{line-height:1.6;margin:10px 0}button,input{font:inherit;padding:9px 12px}button{cursor:pointer;margin:5px 8px 5px 0}
+input{width:100px}#status{font-weight:600}#stage{background:white;display:flex;align-items:center;justify-content:center}
+#stage svg{display:block;width:min(100%,1100px);height:auto;aspect-ratio:16/9}
+#stage:fullscreen{width:100vw;height:100vh}#stage:fullscreen svg{width:100%;height:100%;aspect-ratio:auto}
+</style>
+<header>
+<h1>보조 모니터 전체화면용 · 한 칸 25 mm</h1>
+<p><b>확인한 모니터:</b> HDMI-1-0 · 1920×1080 · 60 Hz · 표시 영역 약 598×336 mm</p>
+<p><b>이 창을 보조 모니터로 옮긴 뒤 아래 버튼을 누르세요.</b> 패턴은 9×7칸이며 내부 교차점은 8×6개입니다.
+전체 패턴은 목표 크기 225×175 mm로 표시되므로 화면 전체를 체크무늬로 채우지 않습니다. 주변의 넓은 흰 여백이 정상입니다.</p>
+<button id="fullscreen">보조 모니터에서 전체화면</button>
+<button id="reset">초기 크기로 복원</button>
+<p>전체화면에서 아래 가로 눈금과 왼쪽 세로 눈금이 각각 <b>100 mm</b>인지 자로 확인하세요.
+다르면 Esc를 누르고 실측값을 입력해 보정한 뒤 다시 전체화면으로 전환합니다.</p>
+<label>가로 눈금 실측 <input id="mx" type="number" min="25" max="400" step="0.1" value="100"> mm</label>
+<label>세로 눈금 실측 <input id="my" type="number" min="25" max="400" step="0.1" value="100"> mm</label>
+<button id="correct">실측값으로 크기 보정</button>
+<p id="status" role="status"></p>
+<p>한 칸 가로·세로가 모두 25 mm인지 최종 확인합니다. 모니터 정보의 mm 값은 근사값이며 실측값이 우선입니다.
+브라우저 배율 변경은 전체화면 표시 크기에 맞춰 처리하지만, 모니터 자체 확대·오버스캔은 끄고 사용하세요.</p>
+<p><b>이번 25 mm 패턴의 ROS 보정 설정:</b> <code>--size 8x6 --square 0.025</code>.
+이전에 약 17.286 mm로 찍은 사진과 섞지 마세요. 두 카메라에 패턴 전체와 여백이 보이게 하고 촬영 중에는 정지합니다.</p>
+</header>
+<div id="stage"></div>
+<script>
+'use strict';
+const stage=document.getElementById('stage');
+const status=document.getElementById('status');
+let sx=1,sy=1,corrected=false;
+function render(){
+ const cellX=25*sx,cellY=25*sy;
+ const x0=(598-9*cellX)/2,y0=(336-7*cellY)/2;
+ let cells='';
+ for(let r=0;r<7;r++)for(let c=0;c<9;c++)if((r+c)%2===0)
+  cells+=`<rect x="${x0+c*cellX}" y="${y0+r*cellY}" width="${cellX}" height="${cellY}"/>`;
+ const rx=100*sx,ry=100*sy;
+ stage.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 598 336" preserveAspectRatio="none" aria-label="9 by 7 checkerboard, 25 mm target squares">
+ <rect width="598" height="336" fill="white"/>
+ <g fill="black">${cells}</g>
+ <g fill="none" stroke="black" stroke-width="0.5">
+ <path d="M${299-rx/2} 285v6m0 -3h${rx}m0 -3v6"/>
+ <path d="M50 ${168-ry/2}h6m-3 0v${ry}m-3 0h6"/>
+ </g><g font-family="sans-serif" font-size="4" fill="#333" text-anchor="middle">
+ <text x="299" y="35">8 x 6 inner corners | 25 mm target squares | use external display fullscreen</text>
+ <text x="299" y="300">100 mm horizontal reference</text>
+ <text x="53" y="${168+ry/2+12}">100 mm vertical</text></g></svg>`;
+ status.textContent=(corrected?'실측값에 따라 조정했습니다. 두 눈금을 다시 확인하세요.':'모니터 사양으로 계산한 초기 크기입니다. 전체화면에서 두 눈금을 실측하세요.')+
+ ` 가로 배율 ${sx.toFixed(5)} · 세로 배율 ${sy.toFixed(5)}`;
+}
+document.getElementById('fullscreen').onclick=async()=>{
+ try{await stage.requestFullscreen();}catch(e){status.textContent='전체화면이 차단됐습니다. Chrome에서 HTML 파일을 직접 열어주세요.';}
+};
+document.getElementById('correct').onclick=()=>{
+ const mx=Number(document.getElementById('mx').value),my=Number(document.getElementById('my').value);
+ if(!Number.isFinite(mx)||!Number.isFinite(my)||mx<25||my<25||mx>400||my>400){
+  status.textContent='눈금 실측값을 25~400 mm 범위로 입력하세요.';return;
+ }
+ const nx=sx*100/mx,ny=sy*100/my;
+ if(nx<.3||ny<.3||nx>1.35||ny>1.35){
+  status.textContent='크기가 화면 범위를 벗어납니다. 보조 모니터 전체화면에서 측정했는지 확인하세요.';return;
+ }
+ sx=nx;sy=ny;corrected=true;render();
+};
+document.getElementById('reset').onclick=()=>{sx=sy=1;corrected=false;render();};
+render();
+</script>
+</html>

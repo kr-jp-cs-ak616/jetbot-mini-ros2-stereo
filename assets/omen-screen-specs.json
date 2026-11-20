@@ -1,0 +1,21 @@
+{
+  "model_user_reported": "HP HyperX OMEN 15-gb0135AX",
+  "panel_edid_name": "MNF307DA1-3",
+  "native_resolution": [
+    2560,
+    1600
+  ],
+  "edid_physical_mm": [
+    329,
+    205
+  ],
+  "nominal_diagonal_in": 15.3,
+  "square_target_mm": 25,
+  "inner_corners": [
+    8,
+    6
+  ],
+  "baseline_user_measured_mm": 57,
+  "note": "Physical panel dimensions are approximate. Verify displayed square dimensions with a ruler.",
+  "source": "https://support.hp.com/in-en/document/ish_13648102-13648146-16"
+}

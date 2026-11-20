@@ -1,0 +1,10 @@
+{
+  "status": "recalibration_required",
+  "old_yaml_mount_baseline_mm": 57.74,
+  "new_user_baseline_range_mm": [
+    106,
+    107
+  ],
+  "note": "left.yaml/right.yaml remain from old mounting. Do not use them for current distance measurement. New candidate not deployed because baseline mismatch and held-out failures.",
+  "review": "captures/videos/20261117-123322-ZmvRWO/calibration-review.json"
+}

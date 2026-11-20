@@ -1,0 +1,21 @@
+{
+  "status": "calibrated_and_image_validated",
+  "user_baseline_range_mm": [
+    106,
+    107
+  ],
+  "estimated_baseline_mm": 108.92850415348992,
+  "source": "captures/videos/20261117-124007-ECiuDg/combined-dataset/calibration-result",
+  "held_out_pairs_passed": 7,
+  "held_out_pairs_total": 7,
+  "physical_distance_ruler_validation": "pending",
+  "note": "Use original calibrated baseline. Measured center spacing differs by about 2.3%; no forced scaling was applied.",
+  "deployed_to": [
+    "laptop project calibration",
+    "Nano host camera bridge calibration directory",
+    "Docker jetbot-mini-ros2:/opt/jetbot-stereo/calibration"
+  ],
+  "deployment_sha256_verified_host": true,
+  "last_recorded_distance_m": 0.6723563487515096,
+  "last_recorded_distance_reference": "left optical center to checkerboard center, selected frame 395 of the 30-second recording"
+}
