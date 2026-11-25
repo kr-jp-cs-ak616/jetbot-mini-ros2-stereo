@@ -39,13 +39,14 @@ def line_candidates(luma, contrast, detector):
     return sorted(candidates, key=lambda edge: edge[3] - edge[2], reverse=True)[:65]
 
 
-def edge_strength(gradient, x, y):
+def edge_strength(gradient, x, y, radius=2):
     cols = np.rint(x).astype(int)
     rows = np.rint(y).astype(int)
-    return np.max(gradient[rows[:, None] + np.arange(-2, 3), cols[:, None]], axis=1)
+    return np.max(gradient[rows[:, None] + np.arange(-radius, radius + 1), cols[:, None]], axis=1)
 
 
-def extract(left, right, camera, mount, detector, marker_detector):
+def extract(left, right, camera, mount, detector, marker_detector, *, dense=False,
+            panel_height=PANEL_TOP - PANEL_BOTTOM, panel_bottom=PANEL_BOTTOM, right_edge_radius=2):
     fx, fy, cx, cy, baseline = camera
     height, nominal_pitch = mount
     lab, contrast, left_grad = preprocess(left)
@@ -73,7 +74,7 @@ def extract(left, right, camera, mount, detector, marker_detector):
                 continue
             if np.any(top < 4) or np.any(bottom >= h - 4):
                 continue
-            fraction = (height - PANEL_BOTTOM) / (PANEL_TOP - PANEL_BOTTOM)
+            fraction = (height - panel_bottom) / panel_height
             horizon = bottom + fraction * (top - bottom)
             pitch = np.arctan2(cy - np.median(horizon), fy)
             if abs(pitch - nominal_pitch) > np.radians(4.5):
@@ -81,28 +82,29 @@ def extract(left, right, camera, mount, detector, marker_detector):
             sine, cosine = np.sin(pitch), np.cos(pitch)
             up = np.array([0., -cosine, -sine])
             ray = np.column_stack(((x - cx) / fx, (bottom - cy) / fy, np.ones(len(x))))
-            depth = -(PANEL_TOP - PANEL_BOTTOM) * (top_plane @ up) / (bottom - top)
+            depth = -panel_height * (top_plane @ up) / (bottom - top)
             foot = ray * depth[:, None]
-            cap = foot + (PANEL_TOP - PANEL_BOTTOM) * up
+            cap = foot + panel_height * up
             lower_z = height + foot @ up
             # Height from image separation implies a depth. The floor-height and
             # second-image checks independently reject false edge bands.
             plausible = ((depth >= .30) & (depth <= 2.7)
-                         & (abs(lower_z - PANEL_BOTTOM) <= .024))
+                         & (abs(lower_z - panel_bottom) <= .024))
             if np.count_nonzero(plausible) < 8:
                 continue
             rx0 = fx * (foot[:, 0] - baseline) / depth + cx
             rx1 = fx * (cap[:, 0] - baseline) / cap[:, 2] + cx
             ry1 = fy * cap[:, 1] / cap[:, 2] + cy
             plausible &= ((rx0 > 3) & (rx1 > 3) & (rx0 < w - 4) & (rx1 < w - 4)
-                          & (ry1 > 4) & (ry1 < h - 4))
+                          & (ry1 > right_edge_radius + 1) & (ry1 < h - right_edge_radius - 2)
+                          & (bottom > right_edge_radius + 1) & (bottom < h - right_edge_radius - 2))
             idx = np.flatnonzero(plausible)
             if len(idx) < 8:
                 continue
             l0 = edge_strength(left_grad, x[idx], bottom[idx])
             l1 = edge_strength(left_grad, x[idx], top[idx])
-            r0 = edge_strength(right_grad, rx0[idx], bottom[idx])
-            r1 = edge_strength(right_grad, rx1[idx], ry1[idx])
+            r0 = edge_strength(right_grad, rx0[idx], bottom[idx], right_edge_radius)
+            r1 = edge_strength(right_grad, rx1[idx], ry1[idx], right_edge_radius)
             # Interior between the edges should mostly be light and neutral.
             rows = (top[idx][None, :] + np.array([.06, .25, .50, .75, .94])[:, None]
                     * (bottom - top)[idx][None, :])
@@ -117,13 +119,13 @@ def extract(left, right, camera, mount, detector, marker_detector):
             for run in np.split(idx[hits], np.flatnonzero(np.diff(idx[hits]) > 1) + 1):
                 if len(run) < 8:
                     continue
-                ends = run[[0, -1]]
-                optical = foot[ends]
+                samples = run if dense else run[[0, -1]]
+                optical = foot[samples]
                 xy = np.column_stack((optical[:, 2] * cosine - optical[:, 1] * sine,
                                       -optical[:, 0]))
-                if np.linalg.norm(xy[1] - xy[0]) < .075:
+                if np.linalg.norm(xy[-1] - xy[0]) < .075:
                     continue
-                pixels = np.column_stack((x[ends], top[ends], bottom[ends]))
+                pixels = np.column_stack((x[samples], top[samples], bottom[samples]))
                 accepted.append((pixels, xy, len(run)))
     # Keep the widest validated band per column; repeated LSD edges give duplicates.
     selected = []
@@ -179,16 +181,16 @@ def fuse(observations, min_frames=3):
     return segments
 
 
-def mesh(segments):
+def mesh(segments, *, panel_bottom=PANEL_BOTTOM, panel_top=PANEL_TOP, thickness=PANEL_THICKNESS):
     vertices, faces = [], []
     for segment in segments:
         start, end = np.array(segment['xy_m'])
         # Each panel is a closed rectangular solid with measured thickness.
         along = (end - start) / np.linalg.norm(end - start)
-        across = np.array([-along[1], along[0]]) * PANEL_THICKNESS / 2
+        across = np.array([-along[1], along[0]]) * thickness / 2
         ring = [start - across, end - across, end + across, start + across]
         offset = len(vertices)
-        vertices.extend((x, y, z) for z in (PANEL_BOTTOM, PANEL_TOP) for x, y in ring)
+        vertices.extend((x, y, z) for z in (panel_bottom, panel_top) for x, y in ring)
         for quad in [(3, 2, 1, 0), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5),
                      (2, 3, 7, 6), (3, 0, 4, 7)]:
             a, b, c, d = (offset + i for i in quad)

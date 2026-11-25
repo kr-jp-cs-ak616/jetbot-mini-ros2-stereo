@@ -12,6 +12,10 @@ Jetson Nano에 달린 IMX219 카메라 두 대로 사진을 찍고, 두 영상�
 
 Nano의 JetPack이 두 카메라에서 영상을 읽습니다. Nano의 ROS 2 Humble 컨테이너가 영상을 보내면, 노트북의 Jazzy가 영상 왜곡을 보정하고 지도와 위치를 계산합니다. 사진이나 보정 영상만 녹화할 때는 Nano의 Docker 컨테이너도 필요 없습니다.
 
+## 최신 매핑 결과
+
+[2026-11-25 실험 기록과 RTAB-Map 캡처](docs/results/2026-11-25/README.md)에서 사용 알고리즘, 벽과 ArUco 실측값, 지도 DB, Nano 위치와 임시 오차 표시를 확인할 수 있습니다.
+
 ## 1. 폴더 열기와 Nano 접속
 
 1. GitHub에서 **Code → Download ZIP**을 눌러 파일을 받은 뒤 압축을 풉니다. Git을 쓰는 경우 **Code → HTTPS**에 표시된 주소를 복사해 `git clone 주소`를 실행할 수도 있습니다.

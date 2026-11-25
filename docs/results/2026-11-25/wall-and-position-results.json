@@ -1,0 +1,178 @@
+{
+  "frame_id": "map",
+  "walls_xy_m": [
+    [
+      [
+        -0.4249999999999998,
+        -0.403
+      ],
+      [
+        -0.4249999999999998,
+        0.453
+      ]
+    ],
+    [
+      [
+        -0.4234999999999998,
+        -0.4015
+      ],
+      [
+        1.3545000000000003,
+        -0.4015
+      ]
+    ],
+    [
+      [
+        -0.4234999999999998,
+        0.4515
+      ],
+      [
+        0.4765000000000002,
+        0.4515
+      ]
+    ]
+  ],
+  "thickness_m": 0.003,
+  "id24_wall_thickness_source": "3 mm assumed from shared partition",
+  "markers": {
+    "22": {
+      "center_map_xyz_m": [
+        -0.4234999999999998,
+        0.061,
+        0.07050000000000001
+      ],
+      "side_m": 0.1,
+      "normal_xy": [
+        1.0,
+        0.0
+      ],
+      "clockwise_deg": -0.03930969498859012,
+      "center_height_source": "134 mm below panel top, measured"
+    },
+    "23": {
+      "center_map_xyz_m": [
+        -0.4264999999999998,
+        -0.05502060851739865,
+        0.10699999999999998
+      ],
+      "side_m": 0.15,
+      "normal_xy": [
+        -1.0,
+        0.0
+      ],
+      "clockwise_deg": 2.0169795460421787,
+      "center_height_source": "tape survey"
+    },
+    "24": {
+      "center_map_xyz_m": [
+        0.9815000000000003,
+        -0.4,
+        0.12250000000000003
+      ],
+      "side_m": 0.15,
+      "normal_xy": [
+        0.0,
+        1.0
+      ],
+      "clockwise_deg": 0.0,
+      "center_height_source": "tape survey below wall top and measured wall top height",
+      "position_source": "tape survey along reference wall",
+      "orientation_source": "upright assumption, normal toward interior"
+    }
+  },
+  "id22_survey_m": {
+    "from_corner": 0.461,
+    "below_top": 0.134
+  },
+  "perpendicular_wall_span_source": "tape survey length from both corners, registered at the ID 22 corner and aligned to the reference map",
+  "perpendicular_wall_observed_x_intervals_m": [
+    [
+      1.045498013496399,
+      1.1202929019927979
+    ],
+    [
+      0.7535650134086609,
+      0.853585422039032
+    ]
+  ],
+  "id24_archived_pairs_with_pose": 19,
+  "current_id22_left_camera_pose": {
+    "xy_m": [
+      0.5561194872681929,
+      0.08918300702101425
+    ],
+    "yaw_rad": -3.075181496526454,
+    "marker_id": 22,
+    "reprojection_rms_px": 0.2302458955242485,
+    "anchor_position_std_m": 0.15,
+    "stamp_s": 1795593453.7944205
+  },
+  "panel_top_m": 0.20450000000000002,
+  "panel_base_m": 0.005,
+  "absolute_anchor_positions_approximate": true,
+  "live_corner_evidence": "corner-evidence.json",
+  "shared_partition_corner_end_before_alignment_y_m": -0.46544337272644043,
+  "shared_partition_corner_end_source": "live visible corner and reference floor plan perpendicular wall",
+  "live_id24_detection": {
+    "recording": "pivot-03",
+    "both_cameras": true,
+    "pose_accepted": false,
+    "max_vertical_corner_error_px": 6.5,
+    "limit_px": 3,
+    "approximate_left_only_xy_m": [
+      0.6379400000000003,
+      0.09999
+    ],
+    "approximate_left_only_heading_deg": -60.4,
+    "stamp_s": 1795593952.569,
+    "anchor": "ID 24 horizontal position from tape survey plus existing reference wall"
+  },
+  "motor_stopped_after_all_pivots": true,
+  "id24_survey_m": {
+    "from_id22_corner": 1.405,
+    "from_opposite_corner": 0.373,
+    "below_wall_top": 0.08199999999999999,
+    "above_floor": 0.12250000000000003
+  },
+  "id24_wall_span_m": {
+    "measured": 1.778,
+    "previous_mesh": 1.7234999999999998,
+    "end_x_delta": 0.054500000000000215
+  },
+  "right_wall": {
+    "corner_xy_m": [
+      -0.4234999999999998,
+      0.45
+    ],
+    "end_xy_m": [
+      0.4765000000000002,
+      0.45
+    ],
+    "length_m": 0.9,
+    "angle_deg": 90,
+    "evidence": "right-corner-evidence.json",
+    "registration": "live stereo corner and far edge, reference map position and angle, tape-measured span",
+    "measured_length": true,
+    "thickness_inherited": true,
+    "motor_stopped_after_all_pivots": true,
+    "previous_length_m": 0.9234999999999998,
+    "previous_length_difference_m": 0.023499999999999743
+  },
+  "nano_display": {
+    "coordinate_reference": "left camera optical center",
+    "center_xyz_m": [
+      0.5512888189172276,
+      0.04400111918374327,
+      0.099
+    ],
+    "sample_stamp_s": 1795594536.9956095,
+    "source": "ID 22 left camera PnP constrained by approximate camera height",
+    "capture_folder": "pivot-02",
+    "position_after_later_rotations_unverified": true,
+    "sphere_symbol_radius_m": 0.045,
+    "horizontal_uncertainty_radius_m": 0.2,
+    "uncertainty_type": "provisional display radius, not a statistical or surveyed bound",
+    "displacement_between_uncontrolled_camera_estimates_m": 0.1031657983931519,
+    "fixed_database_mesh_marker": true
+  }
+}
