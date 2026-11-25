@@ -15,7 +15,7 @@ from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import CameraInfo, Image
 
 
-def tag_observation(image, intrinsics, marker_id, side_m, detector):
+def tag_observation(image, intrinsics, marker_id, side_m, detector, distortion=None):
     corners, identifiers, _ = detector(image)
     if identifiers is None or list(identifiers.ravel()).count(marker_id) != 1:
         return None
@@ -29,11 +29,11 @@ def tag_observation(image, intrinsics, marker_id, side_m, detector):
     target = np.array([[-half, half, 0], [half, half, 0],
                        [half, -half, 0], [-half, -half, 0]])
     ok, rotation, translation = cv2.solvePnP(
-        target, pixels, intrinsics, None, flags=cv2.SOLVEPNP_IPPE_SQUARE,
+        target, pixels, intrinsics, distortion, flags=cv2.SOLVEPNP_IPPE_SQUARE,
     )
     if not ok or translation[2, 0] <= 0:
         return None
-    projected = cv2.projectPoints(target, rotation, translation, intrinsics, None)[0]
+    projected = cv2.projectPoints(target, rotation, translation, intrinsics, distortion)[0]
     rms = float(np.sqrt(np.mean(np.sum((projected.reshape(4, 2) - pixels) ** 2, axis=1))))
     if rms > 2:
         return None
