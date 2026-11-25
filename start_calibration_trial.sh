@@ -83,7 +83,7 @@ if ! systemd-run --user --unit="$localization" --collect --working-directory="$p
         unset ROS_LOCALHOST_ONLY
         exec ros2 launch jetbot_stereo reference_localization.launch.py \
             map_yaml:="$3" calibration_dir:="$2" camera_height_m:=0.099 \
-            camera_pitch_deg:="$4" partition_height_m:=0.199 \
+            camera_pitch_deg:="$4" partition_height_m:=0.203 \
             partition_pitch_tolerance_deg:=3.0 min_panel_luma:=100.0 \
             show_view:=true rviz_config:="$1/assets/reference-map.rviz"
     ' _ "$project_dir" "$calibration" "$map" "$pitch"; then

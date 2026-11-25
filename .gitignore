@@ -5,7 +5,16 @@ __pycache__/
 *.pyc
 .env
 maps/
+# Keep only the calibration profiles used by the documented workflows.
+calibration/**/*.yaml
 calibration/*.yaml
+!calibration/left.yaml
+!calibration/right.yaml
+!calibration/trial-106mm/left.yaml
+!calibration/trial-106mm/right.yaml
+!calibration/aruco-stereo-review/left.yaml
+!calibration/aruco-stereo-review/right.yaml
+calibration/backups/
 captures/
 diagnostics/
 /.agents/
@@ -14,3 +23,19 @@ diagnostics/
 /.pytest_cache/
 /capture.log
 /capture.pid
+
+# Local experiments, generated evaluations, and unpublished design drafts.
+/stereo_matching/
+/docs/jetbot-mini-redesign-20261119.md
+/assets/*-specs.json
+/dist/
+.env.*
+!.env.example
+*.bag
+*.db3
+*.mcap
+*.avi
+*.mp4
+*.whl
+*.pem
+*.key

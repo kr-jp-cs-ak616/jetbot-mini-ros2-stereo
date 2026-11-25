@@ -20,6 +20,6 @@ unset ROS_LOCALHOST_ONLY
 bash "$project_dir/ros_cameras.sh" start
 exec ros2 launch jetbot_stereo reference_localization.launch.py \
     map_yaml:="$map_yaml" calibration_dir:="$project_dir/calibration" \
-    camera_height_m:=0.099 camera_pitch_deg:="${JETBOT_CAMERA_PITCH_DEG:-3.5}" partition_height_m:=0.199 \
+    camera_height_m:=0.099 camera_pitch_deg:="${JETBOT_CAMERA_PITCH_DEG:-3.5}" partition_height_m:=0.203 \
     partition_pitch_tolerance_deg:=3.0 min_panel_luma:=100.0 \
     show_view:=true rviz_config:="$project_dir/assets/reference-map.rviz"
