@@ -38,7 +38,7 @@ def generate_launch_description():
              output='screen', parameters=[{
                  'frame_id': 'stereo_camera_link', 'odom_frame_id': 'partition_odom',
                  'publish_tf': False,
-                 'approx_sync': True, 'approx_sync_max_interval': .02,
+                 'approx_sync': True, 'approx_sync_max_interval': .025,
                  'topic_queue_size': 5, 'sync_queue_size': 5,
                  'qos': 2, 'qos_camera_info': 2, 'Stereo/MaxDisparity': '256',
              }], remappings=[
